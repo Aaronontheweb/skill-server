@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>$(NetLibVersion)</TargetFramework>
+    <RootNamespace>Netclaw.SkillClient</RootNamespace>
+    <AssemblyName>Netclaw.SkillClient</AssemblyName>
+    <Description>Client library for consuming SkillServer APIs.</Description>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <!-- AOT Compatibility -->
+  <PropertyGroup>
+    <IsAotCompatible>true</IsAotCompatible>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Http" />
+  </ItemGroup>
+
+</Project>
