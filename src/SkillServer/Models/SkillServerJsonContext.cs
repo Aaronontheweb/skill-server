@@ -20,6 +20,10 @@ namespace SkillServer.Models;
 [JsonSerializable(typeof(IReadOnlyList<SkillSummary>))]
 [JsonSerializable(typeof(IReadOnlyList<SkillVersionSummary>))]
 [JsonSerializable(typeof(ErrorResponse))]
+[JsonSerializable(typeof(CreateApiKeyRequest))]
+[JsonSerializable(typeof(CreateApiKeyResponse))]
+[JsonSerializable(typeof(ApiKeySummary))]
+[JsonSerializable(typeof(IReadOnlyList<ApiKeySummary>))]
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]

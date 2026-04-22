@@ -39,6 +39,7 @@ Configuration is via environment variables or `appsettings.json`:
 |----------|---------|-------------|
 | `SKILLSERVER__DATAPATH` | `./data` | Directory for SQLite database and blobs |
 | `SKILLSERVER__BASEURL` | `http://localhost:8080` | Base URL for generating absolute URLs in indexes |
+| `SKILLSERVER__APIKEY` | *(none)* | Initial API key, seeded on first run if no keys exist in DB |
 
 ## API Endpoints
 
@@ -58,8 +59,8 @@ Configuration is via environment variables or `appsettings.json`:
 | `GET /skills/{name}/{version}` | Get specific version metadata |
 | `GET /skills/{name}/{version}/SKILL.md` | Download SKILL.md |
 | `GET /skills/{name}/{version}/{path}` | Download resource file |
-| `POST /skills` | Upload new skill version (multipart/form-data) |
-| `DELETE /skills/{name}/{version}` | Delete version |
+| `POST /skills` | Upload new skill version (multipart/form-data) 🔑 |
+| `DELETE /skills/{name}/{version}` | Delete version 🔑 |
 
 ### Blobs
 
@@ -67,6 +68,16 @@ Configuration is via environment variables or `appsettings.json`:
 |----------|-------------|
 | `GET /blobs/sha256/{digest}` | Download blob by digest |
 | `HEAD /blobs/sha256/{digest}` | Check if blob exists |
+
+### API Keys
+
+| Endpoint | Description |
+|----------|-------------|
+| `POST /api-keys` | Create a new API key 🔑 |
+| `GET /api-keys` | List all API keys (without secrets) 🔑 |
+| `DELETE /api-keys/{id}` | Revoke an API key 🔑 |
+
+🔑 = Requires `Authorization: Bearer <key>` header (when API keys are configured)
 
 ### Health
 
@@ -80,6 +91,7 @@ Upload a SKILL.md file:
 
 ```bash
 curl -X POST http://localhost:8080/skills \
+  -H "Authorization: Bearer sk-your-api-key" \
   -F "name=my-skill" \
   -F "version=1.0.0" \
   -F "category=internal" \
@@ -99,11 +111,15 @@ Usage:
 ```csharp
 using Netclaw.SkillClient;
 
-// Direct instantiation
+// Direct instantiation (read-only, no auth needed)
 using var client = new SkillServerClient("http://localhost:8080");
+
+// With API key for write operations
+using var authClient = new SkillServerClient("http://localhost:8080", apiKey: "sk-your-api-key");
 
 // Or via DI
 services.AddSkillServerClient("http://localhost:8080");
+services.AddSkillServerClient("http://localhost:8080", "sk-your-api-key");
 
 // Get RFC index
 var index = await client.GetRfcIndexAsync();
@@ -161,10 +177,51 @@ dotnet publish src/SkillServer -c Release /t:PublishContainer
 
 ## Security
 
-For v1, authentication is **not built in**. Deploy behind your firewall or reverse proxy with authentication.
+SkillServer uses **API key authentication** to protect write operations. Read and discovery endpoints remain open so agents can fetch skills without credentials.
 
-Future versions will add:
-- API key authentication
+### How It Works
+
+- API keys are SHA-256 hashed before storage — raw keys are never persisted
+- Keys are compared using constant-time comparison to prevent timing attacks
+- Keys use the format `sk-{random}` (256 bits of entropy, base64url-encoded)
+- Raw keys are shown **only once** at creation time and cannot be recovered
+
+### Bootstrap
+
+Set the `SKILLSERVER__APIKEY` environment variable before first run:
+
+```bash
+SKILLSERVER__APIKEY=sk-my-secret-key dotnet run --project src/SkillServer
+```
+
+The server hashes and stores this as a "bootstrap" key on first startup. Once any key exists in the database, the environment variable is ignored on subsequent starts.
+
+### Managing Keys
+
+All key management endpoints require an existing valid API key:
+
+```bash
+# Create a new key
+curl -X POST http://localhost:8080/api-keys \
+  -H "Authorization: Bearer sk-your-existing-key" \
+  -H "Content-Type: application/json" \
+  -d '{"label": "ci-deploy"}'
+
+# List keys (never shows raw key or hash)
+curl http://localhost:8080/api-keys \
+  -H "Authorization: Bearer sk-your-existing-key"
+
+# Revoke a key (cannot delete the last remaining key)
+curl -X DELETE http://localhost:8080/api-keys/2 \
+  -H "Authorization: Bearer sk-your-existing-key"
+```
+
+### Backwards Compatibility
+
+When no API keys exist in the database, authentication is disabled and all endpoints are open. This preserves the original v1 behavior for existing deployments.
+
+### Future Enhancements
+
 - Rate limiting
 - Audit logging
 

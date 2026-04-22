@@ -114,3 +114,45 @@ public sealed record ErrorResponse
     [JsonPropertyName("message")]
     public required string Message { get; init; }
 }
+
+public sealed record CreateApiKeyRequest
+{
+    [JsonPropertyName("label")]
+    public required string Label { get; init; }
+
+    [JsonPropertyName("expiresAt")]
+    public DateTimeOffset? ExpiresAt { get; init; }
+}
+
+public sealed record CreateApiKeyResponse
+{
+    [JsonPropertyName("id")]
+    public required long Id { get; init; }
+
+    [JsonPropertyName("label")]
+    public required string Label { get; init; }
+
+    [JsonPropertyName("key")]
+    public required string Key { get; init; }
+
+    [JsonPropertyName("createdAt")]
+    public required DateTimeOffset CreatedAt { get; init; }
+
+    [JsonPropertyName("expiresAt")]
+    public DateTimeOffset? ExpiresAt { get; init; }
+}
+
+public sealed record ApiKeySummary
+{
+    [JsonPropertyName("id")]
+    public required long Id { get; init; }
+
+    [JsonPropertyName("label")]
+    public required string Label { get; init; }
+
+    [JsonPropertyName("createdAt")]
+    public required DateTimeOffset CreatedAt { get; init; }
+
+    [JsonPropertyName("expiresAt")]
+    public DateTimeOffset? ExpiresAt { get; init; }
+}

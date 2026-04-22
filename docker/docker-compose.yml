@@ -8,6 +8,7 @@ services:
     environment:
       - SKILLSERVER__DATAPATH=/data
       - SKILLSERVER__BASEURL=http://localhost:8080
+      - SKILLSERVER__APIKEY=${SKILLSERVER_APIKEY:-}
       - ASPNETCORE_URLS=http://+:8080
 
 volumes:
