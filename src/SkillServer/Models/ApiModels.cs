@@ -115,6 +115,36 @@ public sealed record ErrorResponse
     public required string Message { get; init; }
 }
 
+public sealed record CheckUpdateRequestItem
+{
+    [JsonPropertyName("name")]
+    public required string Name { get; init; }
+
+    [JsonPropertyName("version")]
+    public required string Version { get; init; }
+}
+
+public sealed record CheckUpdateResponseItem
+{
+    [JsonPropertyName("name")]
+    public required string Name { get; init; }
+
+    [JsonPropertyName("currentVersion")]
+    public required string CurrentVersion { get; init; }
+
+    [JsonPropertyName("latestVersion")]
+    public required string LatestVersion { get; init; }
+
+    [JsonPropertyName("latestDigest")]
+    public required string LatestDigest { get; init; }
+
+    [JsonPropertyName("latestPublishedAt")]
+    public required DateTimeOffset LatestPublishedAt { get; init; }
+
+    [JsonPropertyName("hasUpdate")]
+    public required bool HasUpdate { get; init; }
+}
+
 public sealed record CreateApiKeyRequest
 {
     [JsonPropertyName("label")]

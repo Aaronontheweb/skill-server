@@ -313,6 +313,162 @@ public sealed class SkillServerIntegrationTests
     }
 
     [Fact]
+    public async Task SearchSkills_ReturnsMatchingResults()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var prefix = $"srch-{Guid.NewGuid():N}"[..10];
+        var skillName = $"{prefix}-finder";
+
+        // Upload a skill with a distinctive description
+        var skillContent = $"""
+            ---
+            name: {skillName}
+            description: Helps with kubernetes pod deployment orchestration
+            ---
+
+            # Search Test
+            """;
+
+        using var content = new MultipartFormDataContent();
+        content.Add(new StringContent(skillName), "name");
+        content.Add(new StringContent("1.0.0"), "version");
+
+        var fileContent = new ByteArrayContent(Encoding.UTF8.GetBytes(skillContent));
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("text/markdown");
+        content.Add(fileContent, "file", "SKILL.md");
+
+        await _fixture.AuthenticatedHttpClient.PostAsync("/skills", content, ct);
+
+        // Search by description keyword
+        var results = await _fixture.Client.SearchSkillsAsync("kubernetes", ct: ct);
+        Assert.Contains(results, s => s.Name == skillName);
+
+        // Search by name
+        results = await _fixture.Client.SearchSkillsAsync(prefix, ct: ct);
+        Assert.Contains(results, s => s.Name == skillName);
+
+        // Search for non-existent term
+        results = await _fixture.Client.SearchSkillsAsync("zzz-nonexistent-zzz", ct: ct);
+        Assert.DoesNotContain(results, s => s.Name == skillName);
+    }
+
+    [Fact]
+    public async Task GetLatestVersion_ReturnsLatest()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var skillName = $"latest-{Guid.NewGuid():N}"[..20];
+
+        // Upload v1.0.0
+        var skillContent1 = $"""
+            ---
+            name: {skillName}
+            description: Version one
+            ---
+
+            # V1
+            """;
+
+        using var content1 = new MultipartFormDataContent();
+        content1.Add(new StringContent(skillName), "name");
+        content1.Add(new StringContent("1.0.0"), "version");
+        var fileContent1 = new ByteArrayContent(Encoding.UTF8.GetBytes(skillContent1));
+        fileContent1.Headers.ContentType = new MediaTypeHeaderValue("text/markdown");
+        content1.Add(fileContent1, "file", "SKILL.md");
+        await _fixture.AuthenticatedHttpClient.PostAsync("/skills", content1, ct);
+
+        // Upload v2.0.0
+        var skillContent2 = $"""
+            ---
+            name: {skillName}
+            description: Version two
+            ---
+
+            # V2
+            """;
+
+        using var content2 = new MultipartFormDataContent();
+        content2.Add(new StringContent(skillName), "name");
+        content2.Add(new StringContent("2.0.0"), "version");
+        var fileContent2 = new ByteArrayContent(Encoding.UTF8.GetBytes(skillContent2));
+        fileContent2.Headers.ContentType = new MediaTypeHeaderValue("text/markdown");
+        content2.Add(fileContent2, "file", "SKILL.md");
+        await _fixture.AuthenticatedHttpClient.PostAsync("/skills", content2, ct);
+
+        // Get latest - should be v2.0.0
+        var latest = await _fixture.Client.GetLatestVersionAsync(skillName, ct);
+        Assert.NotNull(latest);
+        Assert.Equal("2.0.0", latest.Version);
+        Assert.True(latest.IsLatest);
+    }
+
+    [Fact]
+    public async Task GetLatestVersion_NotFound_Returns404()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var response = await _fixture.HttpClient.GetAsync("/skills/nonexistent-skill/latest", ct);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CheckUpdates_ReturnsUpdateStatus()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var skillName = $"upd-{Guid.NewGuid():N}"[..20];
+
+        // Upload v1.0.0
+        var skillContent1 = $"""
+            ---
+            name: {skillName}
+            description: Update check test
+            ---
+
+            # V1
+            """;
+
+        using var content1 = new MultipartFormDataContent();
+        content1.Add(new StringContent(skillName), "name");
+        content1.Add(new StringContent("1.0.0"), "version");
+        var fileContent1 = new ByteArrayContent(Encoding.UTF8.GetBytes(skillContent1));
+        fileContent1.Headers.ContentType = new MediaTypeHeaderValue("text/markdown");
+        content1.Add(fileContent1, "file", "SKILL.md");
+        await _fixture.AuthenticatedHttpClient.PostAsync("/skills", content1, ct);
+
+        // Upload v2.0.0
+        var skillContent2 = $"""
+            ---
+            name: {skillName}
+            description: Update check test v2
+            ---
+
+            # V2
+            """;
+
+        using var content2 = new MultipartFormDataContent();
+        content2.Add(new StringContent(skillName), "name");
+        content2.Add(new StringContent("2.0.0"), "version");
+        var fileContent2 = new ByteArrayContent(Encoding.UTF8.GetBytes(skillContent2));
+        fileContent2.Headers.ContentType = new MediaTypeHeaderValue("text/markdown");
+        content2.Add(fileContent2, "file", "SKILL.md");
+        await _fixture.AuthenticatedHttpClient.PostAsync("/skills", content2, ct);
+
+        // Check updates - asking about v1.0.0 should show update available
+        var updates = await _fixture.Client.CheckUpdatesAsync([
+            new Netclaw.SkillClient.CheckUpdateRequest { Name = skillName, Version = "1.0.0" },
+            new Netclaw.SkillClient.CheckUpdateRequest { Name = "nonexistent-skill", Version = "1.0.0" }
+        ], ct);
+
+        Assert.Equal(2, updates.Count);
+
+        var skillUpdate = updates.First(u => u.Name == skillName);
+        Assert.True(skillUpdate.HasUpdate);
+        Assert.Equal("1.0.0", skillUpdate.CurrentVersion);
+        Assert.Equal("2.0.0", skillUpdate.LatestVersion);
+
+        var missingSkill = updates.First(u => u.Name == "nonexistent-skill");
+        Assert.False(missingSkill.HasUpdate);
+    }
+
+    [Fact]
     public async Task ApiKeyManagement_WithoutAuth_Returns401()
     {
         var ct = TestContext.Current.CancellationToken;

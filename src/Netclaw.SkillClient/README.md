@@ -62,6 +62,37 @@ var versions = await client.GetSkillVersionsAsync("my-skill");
 var version = await client.GetVersionAsync("my-skill", "1.0.0");
 ```
 
+## Searching Skills
+
+```csharp
+// Full-text search across skill names, descriptions, and categories
+var results = await client.SearchSkillsAsync("kubernetes deployment");
+var page = await client.SearchSkillsAsync("kubernetes", skip: 0, take: 10);
+```
+
+## Getting the Latest Version
+
+```csharp
+// Get the latest version of a specific skill
+var latest = await client.GetLatestVersionAsync("my-skill");
+Console.WriteLine($"Latest: {latest.Version} ({latest.Sha256})");
+```
+
+## Checking for Updates
+
+```csharp
+// Check if any of your cached skills have newer versions
+var updates = await client.CheckUpdatesAsync([
+    new CheckUpdateRequest { Name = "my-skill", Version = "1.0.0" },
+    new CheckUpdateRequest { Name = "other-skill", Version = "2.1.0" }
+]);
+
+foreach (var item in updates.Where(u => u.HasUpdate))
+{
+    Console.WriteLine($"{item.Name}: {item.CurrentVersion} -> {item.LatestVersion}");
+}
+```
+
 ## Downloading Skills
 
 ```csharp

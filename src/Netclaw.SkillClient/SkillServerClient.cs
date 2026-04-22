@@ -151,6 +151,46 @@ public sealed class SkillServerClient : IDisposable
         return actualHex == expectedHex;
     }
 
+    /// <summary>
+    /// Searches skills using full-text search.
+    /// </summary>
+    public async Task<IReadOnlyList<SkillSummary>> SearchSkillsAsync(
+        string query, int? skip = null, int? take = null, CancellationToken ct = default)
+    {
+        var queryParams = new List<string> { $"q={Uri.EscapeDataString(query)}" };
+        if (skip.HasValue) queryParams.Add($"skip={skip.Value}");
+        if (take.HasValue) queryParams.Add($"take={take.Value}");
+
+        var url = $"skills?{string.Join("&", queryParams)}";
+        var result = await _httpClient.GetFromJsonAsync(url,
+            SkillServerClientJsonContext.Default.IReadOnlyListSkillSummary, ct);
+        return result ?? [];
+    }
+
+    /// <summary>
+    /// Gets the latest version of a skill by name.
+    /// </summary>
+    public async Task<SkillVersionSummary?> GetLatestVersionAsync(string name, CancellationToken ct = default)
+    {
+        return await _httpClient.GetFromJsonAsync(
+            $"skills/{Uri.EscapeDataString(name)}/latest",
+            SkillServerClientJsonContext.Default.SkillVersionSummary, ct);
+    }
+
+    /// <summary>
+    /// Checks if any of the specified skills have newer versions available.
+    /// </summary>
+    public async Task<IReadOnlyList<CheckUpdateResponse>> CheckUpdatesAsync(
+        IReadOnlyList<CheckUpdateRequest> items, CancellationToken ct = default)
+    {
+        var response = await _httpClient.PostAsJsonAsync("skills/check-updates", items,
+            SkillServerClientJsonContext.Default.IReadOnlyListCheckUpdateRequest, ct);
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content.ReadFromJsonAsync(
+            SkillServerClientJsonContext.Default.IReadOnlyListCheckUpdateResponse, ct);
+        return result ?? [];
+    }
+
     public async Task<SkillUploadResponse> UploadSkillAsync(
         string name, string version, Stream skillMdContent, string? category = null,
         CancellationToken ct = default)

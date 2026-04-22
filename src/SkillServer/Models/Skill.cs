@@ -85,6 +85,17 @@ public sealed record SkillVersionWithMetadata
 }
 
 /// <summary>
+/// Update information for a skill returned by batch update checks.
+/// </summary>
+public sealed record SkillUpdateInfo
+{
+    public required string Name { get; init; }
+    public required string LatestVersion { get; init; }
+    public required string LatestDigest { get; init; }
+    public required DateTimeOffset LatestPublishedAt { get; init; }
+}
+
+/// <summary>
 /// Skill type constants.
 /// </summary>
 public static class SkillTypes
