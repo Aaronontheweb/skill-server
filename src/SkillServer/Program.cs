@@ -23,14 +23,20 @@ builder.Services.AddOpenApi();
 builder.Services.AddSingleton<DatabaseInitializer>();
 builder.Services.AddSingleton<BlobStorage>();
 builder.Services.AddSingleton<SkillRepository>();
+builder.Services.AddSingleton<ApiKeyRepository>();
 builder.Services.AddSingleton<IndexGenerator>();
 builder.Services.AddSingleton<SkillUploadService>();
+builder.Services.AddSingleton<ApiKeyService>();
 
 var app = builder.Build();
 
 // Initialize database
 var dbInitializer = app.Services.GetRequiredService<DatabaseInitializer>();
 await dbInitializer.InitializeAsync();
+
+// Seed API key from environment variable
+var apiKeyService = app.Services.GetRequiredService<ApiKeyService>();
+await apiKeyService.SeedFromEnvironmentAsync();
 
 // Configure pipeline
 if (app.Environment.IsDevelopment())

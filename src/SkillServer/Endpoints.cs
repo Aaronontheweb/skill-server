@@ -17,6 +17,7 @@ public static class Endpoints
         app.MapDiscoveryEndpoints();
         app.MapSkillEndpoints();
         app.MapBlobEndpoints();
+        app.MapApiKeyEndpoints();
         app.MapHealthEndpoints();
         return app;
     }
@@ -41,8 +42,8 @@ public static class Endpoints
         skills.MapGet("/{name}/{version}", GetVersion);
         skills.MapGet("/{name}/{version}/SKILL.md", DownloadSkillMd);
         skills.MapGet("/{name}/{version}/{*path}", DownloadResource);
-        skills.MapPost("/", UploadSkill).DisableAntiforgery();
-        skills.MapDelete("/{name}/{version}", DeleteVersion);
+        skills.MapPost("/", UploadSkill).DisableAntiforgery().AddEndpointFilter<ApiKeyEndpointFilter>();
+        skills.MapDelete("/{name}/{version}", DeleteVersion).AddEndpointFilter<ApiKeyEndpointFilter>();
     }
 
     private static void MapHealthEndpoints(this WebApplication app)
@@ -254,6 +255,77 @@ public static class Endpoints
         var deleted = await repository.DeleteVersionAsync(skill.Id, version, ct);
         if (!deleted)
             return Results.NotFound(new ErrorResponse { Error = "not_found", Message = $"Version '{version}' not found." });
+
+        return Results.NoContent();
+    }
+
+    private static void MapApiKeyEndpoints(this WebApplication app)
+    {
+        var keys = app.MapGroup("/api-keys")
+            .AddEndpointFilter<ApiKeyEndpointFilter>();
+
+        keys.MapPost("/", CreateApiKey);
+        keys.MapGet("/", ListApiKeys);
+        keys.MapDelete("/{id:long}", DeleteApiKey);
+    }
+
+    private static async Task<IResult> CreateApiKey(
+        CreateApiKeyRequest request,
+        ApiKeyService apiKeyService,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.Label))
+        {
+            return Results.BadRequest(new ErrorResponse
+            {
+                Error = "invalid_label",
+                Message = "API key label is required."
+            });
+        }
+
+        var (rawKey, storedKey) = await apiKeyService.CreateKeyAsync(
+            request.Label, request.ExpiresAt, ct);
+
+        return Results.Created($"/api-keys/{storedKey.Id}", new CreateApiKeyResponse
+        {
+            Id = storedKey.Id,
+            Label = storedKey.Label,
+            Key = rawKey,
+            CreatedAt = storedKey.CreatedAt,
+            ExpiresAt = storedKey.ExpiresAt
+        });
+    }
+
+    private static async Task<IResult> ListApiKeys(
+        ApiKeyService apiKeyService,
+        CancellationToken ct)
+    {
+        var keys = await apiKeyService.ListKeysAsync(ct);
+        var summaries = keys.Select(k => new ApiKeySummary
+        {
+            Id = k.Id,
+            Label = k.Label,
+            CreatedAt = k.CreatedAt,
+            ExpiresAt = k.ExpiresAt
+        }).ToList();
+
+        return Results.Json(summaries, SkillServerJsonContext.Default.IReadOnlyListApiKeySummary);
+    }
+
+    private static async Task<IResult> DeleteApiKey(
+        long id,
+        ApiKeyService apiKeyService,
+        CancellationToken ct)
+    {
+        var deleted = await apiKeyService.DeleteKeyAsync(id, ct);
+        if (!deleted)
+        {
+            return Results.BadRequest(new ErrorResponse
+            {
+                Error = "delete_failed",
+                Message = "Cannot delete key. It may not exist or it may be the last remaining key."
+            });
+        }
 
         return Results.NoContent();
     }

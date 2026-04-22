@@ -18,10 +18,13 @@ public sealed class SkillServerClient : IDisposable
     private readonly bool _ownsHttpClient;
     private readonly JsonSerializerOptions _jsonOptions;
 
-    public SkillServerClient(string serverUrl)
+    public SkillServerClient(string serverUrl, string? apiKey = null)
     {
         _httpClient = new HttpClient { BaseAddress = new Uri(serverUrl.TrimEnd('/') + "/") };
         _ownsHttpClient = true;
+        if (!string.IsNullOrEmpty(apiKey))
+            _httpClient.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
         _jsonOptions = new JsonSerializerOptions
         {
             TypeInfoResolver = SkillServerClientJsonContext.Default
@@ -146,6 +149,30 @@ public sealed class SkillServerClient : IDisposable
         var actualHex = Convert.ToHexString(hashBytes).ToLowerInvariant();
 
         return actualHex == expectedHex;
+    }
+
+    public async Task<SkillUploadResponse> UploadSkillAsync(
+        string name, string version, Stream skillMdContent, string? category = null,
+        CancellationToken ct = default)
+    {
+        using var content = new MultipartFormDataContent();
+        content.Add(new StringContent(name), "name");
+        content.Add(new StringContent(version), "version");
+        if (category is not null)
+            content.Add(new StringContent(category), "category");
+        content.Add(new StreamContent(skillMdContent), "file", "SKILL.md");
+
+        var response = await _httpClient.PostAsync("skills", content, ct);
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync(
+            SkillServerClientJsonContext.Default.SkillUploadResponse, ct))!;
+    }
+
+    public async Task DeleteVersionAsync(string name, string version, CancellationToken ct = default)
+    {
+        var response = await _httpClient.DeleteAsync(
+            $"skills/{Uri.EscapeDataString(name)}/{Uri.EscapeDataString(version)}", ct);
+        response.EnsureSuccessStatusCode();
     }
 
     public void Dispose()

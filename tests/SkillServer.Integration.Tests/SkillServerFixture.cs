@@ -11,12 +11,18 @@ namespace SkillServer.Integration.Tests;
 
 public sealed class SkillServerFixture : IAsyncLifetime
 {
+    public const string TestApiKey = "sk-test-integration-key-12345";
+
     private WebApplicationFactory<Program>? _factory;
     private HttpClient? _httpClient;
+    private HttpClient? _authHttpClient;
     private SkillServerClient? _client;
 
     public HttpClient HttpClient => _httpClient
         ?? throw new InvalidOperationException("HttpClient not initialized");
+
+    public HttpClient AuthenticatedHttpClient => _authHttpClient
+        ?? throw new InvalidOperationException("Authenticated HttpClient not initialized");
 
     public SkillServerClient Client => _client
         ?? throw new InvalidOperationException("Client not initialized");
@@ -25,6 +31,11 @@ public sealed class SkillServerFixture : IAsyncLifetime
     {
         _factory = new WebApplicationFactory<Program>();
         _httpClient = _factory.CreateClient();
+
+        _authHttpClient = _factory.CreateClient();
+        _authHttpClient.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", TestApiKey);
+
         _client = new SkillServerClient(_httpClient);
 
         return ValueTask.CompletedTask;
@@ -33,6 +44,7 @@ public sealed class SkillServerFixture : IAsyncLifetime
     public async ValueTask DisposeAsync()
     {
         _httpClient?.Dispose();
+        _authHttpClient?.Dispose();
         _client?.Dispose();
 
         if (_factory is not null)

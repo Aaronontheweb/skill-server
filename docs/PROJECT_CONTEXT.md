@@ -54,7 +54,7 @@ SkillServer is a self-hosted skill registry for AI agents, enabling organization
 
 ## Design Constraints
 
-1. **No authentication in v1** - Deploy behind firewall/reverse proxy
+1. **API key authentication** - SHA-256 hashed keys, write-only protection, reads stay open
 2. **AOT-ready** - No reflection-based serialization
 3. **Single-file deployment** - SQLite, no external dependencies
 4. **Multi-arch containers** - linux-x64, linux-arm64
@@ -77,7 +77,6 @@ SkillServer is a self-hosted skill registry for AI agents, enabling organization
 
 ## Future Roadmap
 
-- API key authentication
 - Rate limiting
 - Audit logging
 - Webhook notifications

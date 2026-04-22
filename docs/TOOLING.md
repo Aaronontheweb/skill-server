@@ -90,6 +90,7 @@ docker compose -f docker/docker-compose.yml up -d
 |----------|---------|---------|
 | `SKILLSERVER__DATAPATH` | `./data` | SQLite + blob storage path |
 | `SKILLSERVER__BASEURL` | `http://localhost:8080` | Base URL for absolute links |
+| `SKILLSERVER__APIKEY` | *(none)* | Initial API key (seeded on first run if no keys exist) |
 
 ## IDE Configuration
 

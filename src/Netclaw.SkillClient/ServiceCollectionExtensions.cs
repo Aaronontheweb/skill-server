@@ -12,16 +12,27 @@ namespace Netclaw.SkillClient;
 /// </summary>
 public static class ServiceCollectionExtensions
 {
-    /// <summary>
-    /// Adds SkillServerClient to the service collection.
-    /// </summary>
     public static IServiceCollection AddSkillServerClient(
         this IServiceCollection services,
         string serverUrl)
     {
+        return services.AddSkillServerClient(serverUrl, apiKey: null);
+    }
+
+    /// <summary>
+    /// Adds SkillServerClient to the service collection with an API key.
+    /// </summary>
+    public static IServiceCollection AddSkillServerClient(
+        this IServiceCollection services,
+        string serverUrl,
+        string? apiKey)
+    {
         services.AddHttpClient<SkillServerClient>(client =>
         {
             client.BaseAddress = new Uri(serverUrl.TrimEnd('/') + "/");
+            if (!string.IsNullOrEmpty(apiKey))
+                client.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
         });
 
         return services;

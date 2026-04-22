@@ -13,5 +13,6 @@ internal static class TestEnvironmentInitializer
     internal static void Initialize()
     {
         Environment.SetEnvironmentVariable("DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE", "false");
+        Environment.SetEnvironmentVariable("SKILLSERVER__APIKEY", "sk-test-integration-key-12345");
     }
 }

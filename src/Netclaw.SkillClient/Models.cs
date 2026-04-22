@@ -121,6 +121,54 @@ public sealed record SkillVersionSummary
     public int FileCount { get; init; }
 }
 
+public sealed record SkillUploadResponse
+{
+    [JsonPropertyName("name")]
+    public string Name { get; init; } = "";
+
+    [JsonPropertyName("version")]
+    public string Version { get; init; } = "";
+
+    [JsonPropertyName("sha256")]
+    public string Sha256 { get; init; } = "";
+
+    [JsonPropertyName("url")]
+    public string Url { get; init; } = "";
+}
+
+public sealed record CreateApiKeyResponse
+{
+    [JsonPropertyName("id")]
+    public long Id { get; init; }
+
+    [JsonPropertyName("label")]
+    public string Label { get; init; } = "";
+
+    [JsonPropertyName("key")]
+    public string Key { get; init; } = "";
+
+    [JsonPropertyName("createdAt")]
+    public DateTimeOffset CreatedAt { get; init; }
+
+    [JsonPropertyName("expiresAt")]
+    public DateTimeOffset? ExpiresAt { get; init; }
+}
+
+public sealed record ApiKeySummary
+{
+    [JsonPropertyName("id")]
+    public long Id { get; init; }
+
+    [JsonPropertyName("label")]
+    public string Label { get; init; } = "";
+
+    [JsonPropertyName("createdAt")]
+    public DateTimeOffset CreatedAt { get; init; }
+
+    [JsonPropertyName("expiresAt")]
+    public DateTimeOffset? ExpiresAt { get; init; }
+}
+
 /// <summary>
 /// JSON serialization context for AOT support.
 /// </summary>
@@ -128,5 +176,9 @@ public sealed record SkillVersionSummary
 [JsonSerializable(typeof(IReadOnlyList<SkillSummary>))]
 [JsonSerializable(typeof(IReadOnlyList<SkillVersionSummary>))]
 [JsonSerializable(typeof(SkillVersionSummary))]
+[JsonSerializable(typeof(SkillUploadResponse))]
+[JsonSerializable(typeof(CreateApiKeyResponse))]
+[JsonSerializable(typeof(ApiKeySummary))]
+[JsonSerializable(typeof(IReadOnlyList<ApiKeySummary>))]
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
 public partial class SkillServerClientJsonContext : JsonSerializerContext;
