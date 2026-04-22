@@ -11,8 +11,8 @@ A self-hosted skill server for managing AI agent skills internally within organi
 
 SkillServer implements two complementary standards:
 
-- **AgentSkills.io** - The SKILL.md format standard (originally by Anthropic)
-- **Cloudflare Agent Skills Discovery RFC v0.2.0** - Discovery via `/.well-known/agent-skills/index.json`
+- **[AgentSkills.io](https://agentskills.io)** - The SKILL.md format standard (originally by Anthropic)
+- **[Cloudflare Agent Skills Discovery RFC v0.2.0](https://github.com/cloudflare/agent-skills-spec)** - Discovery via `/.well-known/agent-skills/index.json`
 - **NetClaw manifest.json** - Backwards compatibility with existing NetClaw infrastructure
 
 ## Quick Start
@@ -100,39 +100,22 @@ curl -X POST http://localhost:8080/skills \
 
 ## Client Library
 
-Install the client library:
+The `Netclaw.SkillClient` NuGet package provides a typed .NET client for SkillServer.
 
 ```bash
 dotnet add package Netclaw.SkillClient
 ```
 
-Usage:
-
 ```csharp
 using Netclaw.SkillClient;
 
-// Direct instantiation (read-only, no auth needed)
-using var client = new SkillServerClient("http://localhost:8080");
+using var client = new SkillServerClient("http://localhost:8080", apiKey: "sk-your-api-key");
 
-// With API key for write operations
-using var authClient = new SkillServerClient("http://localhost:8080", apiKey: "sk-your-api-key");
-
-// Or via DI
-services.AddSkillServerClient("http://localhost:8080");
-services.AddSkillServerClient("http://localhost:8080", "sk-your-api-key");
-
-// Get RFC index
 var index = await client.GetRfcIndexAsync();
-
-// Get NetClaw manifest
-var manifest = await client.GetNetclawManifestAsync();
-
-// Download a skill
 var content = await client.GetSkillFileAsStringAsync("my-skill", "1.0.0");
-
-// Verify digest
-var isValid = await client.VerifyDigestAsync("my-skill", "1.0.0", "sha256:...");
 ```
+
+See the [client library README](src/Netclaw.SkillClient/README.md) for full API documentation.
 
 ## NetClaw Integration
 
