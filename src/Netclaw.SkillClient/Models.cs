@@ -121,6 +121,36 @@ public sealed record SkillVersionSummary
     public int FileCount { get; init; }
 }
 
+public sealed record CheckUpdateRequest
+{
+    [JsonPropertyName("name")]
+    public string Name { get; init; } = "";
+
+    [JsonPropertyName("version")]
+    public string Version { get; init; } = "";
+}
+
+public sealed record CheckUpdateResponse
+{
+    [JsonPropertyName("name")]
+    public string Name { get; init; } = "";
+
+    [JsonPropertyName("currentVersion")]
+    public string CurrentVersion { get; init; } = "";
+
+    [JsonPropertyName("latestVersion")]
+    public string LatestVersion { get; init; } = "";
+
+    [JsonPropertyName("latestDigest")]
+    public string LatestDigest { get; init; } = "";
+
+    [JsonPropertyName("latestPublishedAt")]
+    public DateTimeOffset LatestPublishedAt { get; init; }
+
+    [JsonPropertyName("hasUpdate")]
+    public bool HasUpdate { get; init; }
+}
+
 public sealed record SkillUploadResponse
 {
     [JsonPropertyName("name")]
@@ -180,5 +210,7 @@ public sealed record ApiKeySummary
 [JsonSerializable(typeof(CreateApiKeyResponse))]
 [JsonSerializable(typeof(ApiKeySummary))]
 [JsonSerializable(typeof(IReadOnlyList<ApiKeySummary>))]
+[JsonSerializable(typeof(IReadOnlyList<CheckUpdateRequest>))]
+[JsonSerializable(typeof(IReadOnlyList<CheckUpdateResponse>))]
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
 public partial class SkillServerClientJsonContext : JsonSerializerContext;

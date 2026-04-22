@@ -39,9 +39,11 @@ public static class Endpoints
 
         skills.MapGet("/", ListSkills);
         skills.MapGet("/{name}", GetSkill);
+        skills.MapGet("/{name}/latest", GetLatestVersion);
         skills.MapGet("/{name}/{version}", GetVersion);
         skills.MapGet("/{name}/{version}/SKILL.md", DownloadSkillMd);
         skills.MapGet("/{name}/{version}/{*path}", DownloadResource);
+        skills.MapPost("/check-updates", CheckUpdates);
         skills.MapPost("/", UploadSkill).DisableAntiforgery().AddEndpointFilter<ApiKeyEndpointFilter>();
         skills.MapDelete("/{name}/{version}", DeleteVersion).AddEndpointFilter<ApiKeyEndpointFilter>();
     }
@@ -53,11 +55,17 @@ public static class Endpoints
 
     private static async Task<IResult> ListSkills(
         SkillRepository repository,
+        string? q,
         int? skip,
         int? take,
         CancellationToken ct)
     {
-        var latestVersions = await repository.GetAllLatestVersionsWithMetadataAsync(skip, take, ct);
+        IReadOnlyList<SkillVersionWithMetadata> latestVersions;
+
+        if (!string.IsNullOrWhiteSpace(q))
+            latestVersions = await repository.SearchSkillsAsync(q, skip, take, ct);
+        else
+            latestVersions = await repository.GetAllLatestVersionsWithMetadataAsync(skip, take, ct);
 
         var summaries = latestVersions.Select(v => new SkillSummary
         {
@@ -257,6 +265,78 @@ public static class Endpoints
             return Results.NotFound(new ErrorResponse { Error = "not_found", Message = $"Version '{version}' not found." });
 
         return Results.NoContent();
+    }
+
+    private static async Task<IResult> GetLatestVersion(
+        string name,
+        SkillRepository repository,
+        CancellationToken ct)
+    {
+        var latest = await repository.GetLatestVersionByNameAsync(name, ct);
+        if (latest is null)
+            return Results.NotFound(new ErrorResponse { Error = "not_found", Message = $"Skill '{name}' not found." });
+
+        var summary = new SkillVersionSummary
+        {
+            Name = name,
+            Version = latest.Version,
+            Description = latest.Description,
+            Category = latest.Category,
+            Sha256 = latest.Sha256,
+            SizeBytes = latest.SizeBytes,
+            PublishedAt = latest.PublishedAt,
+            IsLatest = latest.IsLatest,
+            FileCount = latest.FileCount
+        };
+
+        return Results.Json(summary, SkillServerJsonContext.Default.SkillVersionSummary);
+    }
+
+    private static async Task<IResult> CheckUpdates(
+        IReadOnlyList<CheckUpdateRequestItem> request,
+        SkillRepository repository,
+        CancellationToken ct)
+    {
+        if (request.Count == 0)
+            return Results.Json(Array.Empty<CheckUpdateResponseItem>(),
+                SkillServerJsonContext.Default.IReadOnlyListCheckUpdateResponseItem);
+
+        if (request.Count > 100)
+            return Results.BadRequest(new ErrorResponse
+                { Error = "too_many_items", Message = "Maximum 100 items per request." });
+
+        var latestVersions = await repository.CheckUpdatesAsync(
+            request.Select(r => (r.Name, r.Version)).ToList(), ct);
+
+        var lookup = latestVersions.ToDictionary(v => v.Name, v => v, StringComparer.OrdinalIgnoreCase);
+
+        var results = request.Select(r =>
+        {
+            if (!lookup.TryGetValue(r.Name, out var latest))
+            {
+                return new CheckUpdateResponseItem
+                {
+                    Name = r.Name,
+                    CurrentVersion = r.Version,
+                    LatestVersion = r.Version,
+                    LatestDigest = "",
+                    LatestPublishedAt = DateTimeOffset.MinValue,
+                    HasUpdate = false
+                };
+            }
+
+            return new CheckUpdateResponseItem
+            {
+                Name = r.Name,
+                CurrentVersion = r.Version,
+                LatestVersion = latest.LatestVersion,
+                LatestDigest = latest.LatestDigest,
+                LatestPublishedAt = latest.LatestPublishedAt,
+                HasUpdate = !string.Equals(r.Version, latest.LatestVersion, StringComparison.OrdinalIgnoreCase)
+            };
+        }).ToList();
+
+        return Results.Json(results, SkillServerJsonContext.Default.IReadOnlyListCheckUpdateResponseItem);
     }
 
     private static void MapApiKeyEndpoints(this WebApplication app)

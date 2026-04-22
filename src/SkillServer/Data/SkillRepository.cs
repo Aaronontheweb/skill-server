@@ -258,6 +258,89 @@ public sealed class SkillRepository
             new { versionId, relativePath, sha256, sizeBytes });
     }
 
+    public async Task<IReadOnlyList<SkillVersionWithMetadata>> SearchSkillsAsync(
+        string query, int? skip = null, int? take = null, CancellationToken ct = default)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+
+        // Sanitize and prepare FTS5 query: split on non-alphanumeric chars, append * for prefix matching
+        var terms = query.Split(FtsTokenSeparators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (terms.Length == 0)
+            return [];
+
+        var ftsQuery = string.Join(" ", terms.Select(t => EscapeFtsToken(t)).Where(t => t.Length > 0).Select(t => t + "*"));
+        if (string.IsNullOrEmpty(ftsQuery))
+            return [];
+
+        var sql = """
+            SELECT sv.id AS Id, sv.skill_id AS SkillId, sv.version AS Version, sv.description AS Description,
+                   sv.category AS Category, sv.skill_type AS SkillType, sv.sha256 AS Sha256,
+                   sv.size_bytes AS SizeBytes, sv.published_at AS PublishedAt, sv.is_latest AS IsLatest,
+                   s.name AS SkillName, s.created_at AS SkillCreatedAt, s.updated_at AS SkillUpdatedAt,
+                   (SELECT COUNT(*) FROM skill_versions sv2 WHERE sv2.skill_id = s.id) AS VersionCount
+            FROM skills_fts
+            JOIN skills s ON s.id = skills_fts.rowid
+            JOIN skill_versions sv ON sv.skill_id = s.id AND sv.is_latest = 1
+            WHERE skills_fts MATCH @ftsQuery
+            ORDER BY rank
+            """;
+
+        if (take.HasValue)
+            sql += $" LIMIT {take.Value}";
+        if (skip.HasValue)
+            sql += $" OFFSET {skip.Value}";
+
+        var versions = await connection.QueryAsync<SkillVersionWithMetadata>(sql, new { ftsQuery });
+        return versions.ToList();
+    }
+
+    private static readonly char[] FtsTokenSeparators = [' ', '-', '_', '.', ',', '/', '\\', ':', ';'];
+
+    private static string EscapeFtsToken(string token)
+    {
+        // Keep only alphanumeric characters to prevent FTS5 query syntax injection
+        return new string(token.Where(char.IsLetterOrDigit).ToArray());
+    }
+
+    public async Task<SkillVersionWithFileCount?> GetLatestVersionByNameAsync(string name, CancellationToken ct = default)
+    {
+        await using var connection = new SqliteConnection(_connectionString);
+        return await connection.QuerySingleOrDefaultAsync<SkillVersionWithFileCount>(
+            """
+            SELECT sv.id AS Id, sv.skill_id AS SkillId, sv.version AS Version, sv.description AS Description,
+                   sv.category AS Category, sv.skill_type AS SkillType, sv.sha256 AS Sha256,
+                   sv.size_bytes AS SizeBytes, sv.published_at AS PublishedAt, sv.is_latest AS IsLatest,
+                   (SELECT COUNT(*) FROM skill_files sf WHERE sf.skill_version_id = sv.id) AS FileCount
+            FROM skill_versions sv
+            JOIN skills s ON s.id = sv.skill_id
+            WHERE s.name = @name COLLATE NOCASE AND sv.is_latest = 1
+            """,
+            new { name });
+    }
+
+    public async Task<IReadOnlyList<SkillUpdateInfo>> CheckUpdatesAsync(
+        IReadOnlyList<(string Name, string Version)> skills, CancellationToken ct = default)
+    {
+        if (skills.Count == 0)
+            return [];
+
+        await using var connection = new SqliteConnection(_connectionString);
+
+        // Query all requested skills in one shot
+        var names = skills.Select(s => s.Name).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var results = await connection.QueryAsync<SkillUpdateInfo>(
+            """
+            SELECT s.name AS Name, sv.version AS LatestVersion, sv.sha256 AS LatestDigest,
+                   sv.published_at AS LatestPublishedAt
+            FROM skills s
+            JOIN skill_versions sv ON sv.skill_id = s.id AND sv.is_latest = 1
+            WHERE s.name IN @names COLLATE NOCASE
+            """,
+            new { names });
+
+        return results.ToList();
+    }
+
     public async Task<bool> DeleteVersionAsync(long skillId, string version, CancellationToken ct = default)
     {
         await using var connection = new SqliteConnection(_connectionString);

@@ -55,10 +55,13 @@ Configuration is via environment variables or `appsettings.json`:
 | Endpoint | Description |
 |----------|-------------|
 | `GET /skills` | List all skills |
+| `GET /skills?q={query}` | Search skills (full-text) |
 | `GET /skills/{name}` | Get skill info (all versions) |
+| `GET /skills/{name}/latest` | Get latest version |
 | `GET /skills/{name}/{version}` | Get specific version metadata |
 | `GET /skills/{name}/{version}/SKILL.md` | Download SKILL.md |
 | `GET /skills/{name}/{version}/{path}` | Download resource file |
+| `POST /skills/check-updates` | Batch update check |
 | `POST /skills` | Upload new skill version (multipart/form-data) 🔑 |
 | `DELETE /skills/{name}/{version}` | Delete version 🔑 |
 
@@ -111,8 +114,16 @@ using Netclaw.SkillClient;
 
 using var client = new SkillServerClient("http://localhost:8080", apiKey: "sk-your-api-key");
 
-var index = await client.GetRfcIndexAsync();
-var content = await client.GetSkillFileAsStringAsync("my-skill", "1.0.0");
+// Full-text search
+var results = await client.SearchSkillsAsync("kubernetes deployment");
+
+// Get latest version of a skill
+var latest = await client.GetLatestVersionAsync("my-skill");
+
+// Batch update check
+var updates = await client.CheckUpdatesAsync([
+    new CheckUpdateRequest { Name = "my-skill", Version = "1.0.0" }
+]);
 ```
 
 See the [client library README](src/Netclaw.SkillClient/README.md) for full API documentation.
