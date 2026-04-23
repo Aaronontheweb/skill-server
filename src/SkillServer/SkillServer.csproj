@@ -10,6 +10,7 @@
     <ContainerTitle>skillserver</ContainerTitle>
     <ContainerImageTags>$(VersionPrefix);latest</ContainerImageTags>
     <ContainerRuntimeIdentifiers>linux-x64;linux-arm64</ContainerRuntimeIdentifiers>
+    <RuntimeIdentifiers>linux-x64;linux-arm64</RuntimeIdentifiers>
   </PropertyGroup>
 
   <ItemGroup>
