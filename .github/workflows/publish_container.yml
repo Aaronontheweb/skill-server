@@ -50,7 +50,7 @@ jobs:
           -c Release \
           /t:PublishContainer \
           /p:ContainerRegistry=${{ env.REGISTRY }} \
-          /p:ContainerRepository=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }} \
+          /p:ContainerRepository=${{ env.IMAGE_NAME }} \
           /p:ContainerRuntimeIdentifier=${{ matrix.rid }} \
           /p:ContainerImageTags='"${{ github.ref_name }}-${{ matrix.arch }}"'
 

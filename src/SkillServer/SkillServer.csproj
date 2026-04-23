@@ -5,8 +5,12 @@
     <RootNamespace>SkillServer</RootNamespace>
     <AssemblyName>SkillServer</AssemblyName>
     <EnableSdkContainerSupport>true</EnableSdkContainerSupport>
-    <ContainerRepository>skillserver</ContainerRepository>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <ContainerRepository>netclaw-dev/skillserver</ContainerRepository>
     <ContainerTitle>skillserver</ContainerTitle>
+    <ContainerImageTags>$(VersionPrefix);latest</ContainerImageTags>
+    <ContainerRuntimeIdentifiers>linux-x64;linux-arm64</ContainerRuntimeIdentifiers>
+    <RuntimeIdentifiers>linux-x64;linux-arm64</RuntimeIdentifiers>
   </PropertyGroup>
 
   <ItemGroup>
