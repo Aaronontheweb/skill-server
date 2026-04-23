@@ -36,6 +36,7 @@ Read `docs/TOOLING.md` for:
 - **Sealed by default:** Seal classes unless designed for inheritance
 - **Copyright headers:** All `.cs` files require Petabridge headers (run `scripts/Add-FileHeaders.ps1`)
 - **No comments explaining what:** Code should be self-documenting; comment only non-obvious *why*
+- **No Slopwatch violations:** `dotnet slopwatch analyze` must pass — no new violations (see baseline at `.slopwatch/baseline.json`)
 
 ### Testing Requirements
 - Unit tests for business logic and value objects
@@ -43,9 +44,12 @@ Read `docs/TOOLING.md` for:
 - All tests must pass on both ubuntu and windows
 
 ### PR Requirements
-- All CI jobs must pass (Test, NuGet Pack, Docker Build)
+- All CI jobs must pass (Test, NuGet Pack, Slopwatch, Docker Build)
 - Commits should not mention AI agents or assistants
 - Follow existing commit message style (imperative mood, concise)
+- **No new Slopwatch violations:** run `dotnet slopwatch analyze` after code changes
+  - `.slopwatch/baseline.json` — existing entries are accepted, new violations fail CI
+  - Use `dotnet-skills:slopwatch` (if available) after substantial new/refactor/LLM-authored code
 
 ## Definition of Done
 
