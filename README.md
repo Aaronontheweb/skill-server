@@ -1,5 +1,8 @@
 # SkillServer
 
+[![NuGet](https://img.shields.io/nuget/v/Netclaw.SkillClient)](https://www.nuget.org/packages/Netclaw.SkillClient)
+[![GitHub Container](https://ghcr-badge.egpl.dev/netclaw-dev/skillserver/latest_tag?label=container)](https://ghcr.io/netclaw-dev/skillserver)
+
 A self-hosted skill server for managing AI agent skills internally within organizations. Similar to self-hosted package registries (BaGet for NuGet, Verdaccio for npm, Docker Registry), SkillServer enables companies to:
 
 - Host proprietary skills behind their firewall

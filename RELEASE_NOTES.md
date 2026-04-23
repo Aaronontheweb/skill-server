@@ -1,3 +1,19 @@
-#### 1.0.0 April 10th 2025 ####
+#### 0.1.0 April 23rd 2026 ####
 
-Example release notes
+Initial release of SkillServer and Netclaw.SkillClient.
+
+**SkillServer**
+- Self-hosted skill registry for AI agent skills
+- AgentSkills.io SKILL.md standard support
+- Cloudflare Agent Skills Discovery RFC v0.2.0 compliance
+- FTS5 full-text search across skill content
+- Content-addressable blob storage (SHA-256)
+- API key authentication for write operations with SHA-256 hashing
+- SQLite-backed metadata with Dapper
+- SDK container support with linux-x64 and linux-arm64 images
+- Batch update checking endpoint
+
+**Netclaw.SkillClient**
+- Typed .NET client library for SkillServer
+- AOT-compatible with source generators
+- Full-text search, version resolution, and batch update checking
