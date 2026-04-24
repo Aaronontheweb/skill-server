@@ -64,11 +64,11 @@ jobs:
           $content | Set-Content RELEASE_NOTES_LATEST.md
         }
 
-    - name: release
+    - name: Create Release (draft)
       uses: actions/create-release@0cb9c9b65d5d1901c1f53e5e66eaf4afd303e70e
       id: create_release
       with:
-        draft: false
+        draft: true
         prerelease: false
         release_name: 'SkillServer ${{ github.ref_name }}'
         tag_name: ${{ github.ref }}
@@ -76,9 +76,22 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ github.token }}
 
-    - name: Upload Release Asset
+    - name: Upload Release Assets
       uses: AButler/upload-release-assets@v3.0
       with:
           repo-token: ${{ github.token }}
           release-tag: ${{ github.ref_name }}
           files: 'output/*.nupkg;output/*.snupkg'
+
+    - name: Publish Release
+      uses: actions/github-script@60a0e5936f594fbea0d3df1b631a1473a628e635
+      with:
+        script: |
+          await github.rest.repos.updateRelease({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            release_id: ${{ steps.create_release.outputs.id }},
+            draft: false
+          });
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
