@@ -1,3 +1,14 @@
+#### 0.1.1 April 24th 2026 ####
+
+**Bug Fixes**
+- Fix /health endpoint NotSupportedException from source-generated JSON serializer (#39)
+
+**CI/CD**
+- Add --skip-duplicate to NuGet push commands to prevent duplicate package errors (#36)
+
+**Dependency Updates**
+- Bump YamlDotNet from 16.3.0 to 17.0.1 (#38)
+
 #### 0.1.0 April 23rd 2026 ####
 
 Initial release of SkillServer and Netclaw.SkillClient.
