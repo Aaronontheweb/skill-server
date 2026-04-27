@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 // <copyright file="Endpoints.cs" company="Petabridge, LLC">
 //      Copyright (C) 2026 - 2026 Petabridge, LLC <https://petabridge.com>
 // </copyright>
@@ -232,6 +232,15 @@ public static class Endpoints
 
         if (!result.Success)
         {
+            if (result.IsDuplicateVersion)
+            {
+                return Results.Conflict(new ErrorResponse
+                {
+                    Error = "duplicate_version",
+                    Message = result.Error ?? "Version already exists."
+                });
+            }
+
             return Results.BadRequest(new ErrorResponse
             {
                 Error = "upload_failed",

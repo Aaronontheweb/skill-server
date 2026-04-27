@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 // <copyright file="SkillUploadService.cs" company="Petabridge, LLC">
 //      Copyright (C) 2026 - 2026 Petabridge, LLC <https://petabridge.com>
 // </copyright>
@@ -91,7 +91,7 @@ public sealed partial class SkillUploadService
             var existingVersion = await _repository.GetVersionAsync(skillId, version.Value, ct);
             if (existingVersion is not null)
             {
-                return SkillUploadResult.Failed($"Version {version.Value} already exists for skill {name.Value}.");
+                return SkillUploadResult.DuplicateVersion($"Version {version.Value} already exists for skill {name.Value}.");
             }
         }
 
@@ -181,12 +181,16 @@ public sealed record SkillUploadResult
     public SkillVersionString? Version { get; init; }
     public Sha256Digest? Digest { get; init; }
     public string? Error { get; init; }
+    public bool IsDuplicateVersion { get; init; }
 
     public static SkillUploadResult Succeeded(SkillName name, SkillVersionString version, Sha256Digest digest) =>
         new() { Success = true, Name = name, Version = version, Digest = digest };
 
     public static SkillUploadResult Failed(string error) =>
         new() { Success = false, Error = error };
+
+    public static SkillUploadResult DuplicateVersion(string error) =>
+        new() { Success = false, Error = error, IsDuplicateVersion = true };
 }
 
 /// <summary>
