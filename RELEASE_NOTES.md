@@ -1,3 +1,9 @@
+#### 0.1.2 April 27th 2026 ####
+
+**Improvements**
+- Return 409 Conflict for duplicate skill version uploads instead of 400 Bad Request (#41)
+  - Follows NuGet pattern — enables idempotent publish pipelines via `--skip-duplicate` semantics
+
 #### 0.1.1 April 24th 2026 ####
 
 **Bug Fixes**

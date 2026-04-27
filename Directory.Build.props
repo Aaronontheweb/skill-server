@@ -20,15 +20,10 @@
   </PropertyGroup>
   <!-- Version Management -->
   <PropertyGroup>
-    <VersionPrefix>0.1.1</VersionPrefix>
-    <PackageReleaseNotes>**Bug Fixes**
-- Fix /health endpoint NotSupportedException from source-generated JSON serializer (#39)
-
-**CI/CD**
-- Add --skip-duplicate to NuGet push commands to prevent duplicate package errors (#36)
-
-**Dependency Updates**
-- Bump YamlDotNet from 16.3.0 to 17.0.1 (#38)</PackageReleaseNotes>
+    <VersionPrefix>0.1.2</VersionPrefix>
+    <PackageReleaseNotes>**Improvements**
+- Return 409 Conflict for duplicate skill version uploads instead of 400 Bad Request (#41)
+  - Follows NuGet pattern — enables idempotent publish pipelines via --skip-duplicate semantics</PackageReleaseNotes>
   </PropertyGroup>
   <!-- Default: non-packable unless explicitly set -->
   <PropertyGroup>
