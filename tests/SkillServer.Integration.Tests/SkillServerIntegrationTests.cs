@@ -1,4 +1,4 @@
-﻿// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 // <copyright file="SkillServerIntegrationTests.cs" company="Petabridge, LLC">
 //      Copyright (C) 2026 - 2026 Petabridge, LLC <https://petabridge.com>
 // </copyright>
@@ -480,5 +480,95 @@ public sealed class SkillServerIntegrationTests
 
         var response = await _fixture.HttpClient.GetAsync("/api-keys", ct);
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UploadSkill_DuplicateVersion_Returns409()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var skillName = $"dup-test-{Guid.NewGuid():N}"[..20];
+
+        var skillContent = $"""
+            ---
+            name: {skillName}
+            description: Testing duplicate version
+            ---
+
+            # Duplicate Test
+            """;
+
+        // Upload the first version
+        using var content1 = new MultipartFormDataContent();
+        content1.Add(new StringContent(skillName), "name");
+        content1.Add(new StringContent("1.0.0"), "version");
+
+        var fileContent1 = new ByteArrayContent(Encoding.UTF8.GetBytes(skillContent));
+        fileContent1.Headers.ContentType = new MediaTypeHeaderValue("text/markdown");
+        content1.Add(fileContent1, "file", "SKILL.md");
+
+        var uploadResponse1 = await _fixture.AuthenticatedHttpClient.PostAsync("/skills", content1, ct);
+        Assert.Equal(HttpStatusCode.Created, uploadResponse1.StatusCode);
+
+        // Upload the same version again - should return 409 Conflict
+        using var content2 = new MultipartFormDataContent();
+        content2.Add(new StringContent(skillName), "name");
+        content2.Add(new StringContent("1.0.0"), "version");
+
+        var fileContent2 = new ByteArrayContent(Encoding.UTF8.GetBytes(skillContent));
+        fileContent2.Headers.ContentType = new MediaTypeHeaderValue("text/markdown");
+        content2.Add(fileContent2, "file", "SKILL.md");
+
+        var uploadResponse2 = await _fixture.AuthenticatedHttpClient.PostAsync("/skills", content2, ct);
+        Assert.Equal(HttpStatusCode.Conflict, uploadResponse2.StatusCode);
+
+        // Verify the response body contains the duplicate_version error
+        var errorBody = await uploadResponse2.Content.ReadFromJsonAsync<SkillServer.Models.ErrorResponse>(ct);
+        Assert.NotNull(errorBody);
+        Assert.Equal("duplicate_version", errorBody.Error);
+        Assert.Contains("already exists", errorBody.Message!);
+    }
+
+    [Fact]
+    public async Task UploadSkill_DifferentVersions_AreAllowed()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var skillName = $"ver-test-{Guid.NewGuid():N}"[..20];
+
+        var skillContent = $"""
+            ---
+            name: {skillName}
+            description: Testing different versions
+            ---
+
+            # Version Test
+            """;
+
+        // Upload v1.0.0
+        using var content1 = new MultipartFormDataContent();
+        content1.Add(new StringContent(skillName), "name");
+        content1.Add(new StringContent("1.0.0"), "version");
+
+        var fileContent1 = new ByteArrayContent(Encoding.UTF8.GetBytes(skillContent));
+        fileContent1.Headers.ContentType = new MediaTypeHeaderValue("text/markdown");
+        content1.Add(fileContent1, "file", "SKILL.md");
+
+        var uploadResponse1 = await _fixture.AuthenticatedHttpClient.PostAsync("/skills", content1, ct);
+        Assert.Equal(HttpStatusCode.Created, uploadResponse1.StatusCode);
+
+        // Upload v2.0.0 - should succeed
+        using var content2 = new MultipartFormDataContent();
+        content2.Add(new StringContent(skillName), "name");
+        content2.Add(new StringContent("2.0.0"), "version");
+
+        var fileContent2 = new ByteArrayContent(Encoding.UTF8.GetBytes(skillContent));
+        fileContent2.Headers.ContentType = new MediaTypeHeaderValue("text/markdown");
+        content2.Add(fileContent2, "file", "SKILL.md");
+
+        var uploadResponse2 = await _fixture.AuthenticatedHttpClient.PostAsync("/skills", content2, ct);
+        Assert.Equal(HttpStatusCode.Created, uploadResponse2.StatusCode);
+
+        // Verify both versions exist
+        var versions = await _fixture.Client.GetSkillVersionsAsync(skillName, ct);
+        Assert.Equal(2, versions.Count);
     }
 }
