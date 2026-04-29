@@ -606,4 +606,125 @@ public sealed class SkillServerIntegrationTests
         results = await _fixture.Client.SearchSkillsAsync("closing", ct: ct);
         Assert.Contains(results, s => s.Name == skillName);
     }
+
+    [Fact]
+    public async Task UploadSkillWithReferences_EndToEnd()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var skillName = $"ref-test-{Guid.NewGuid():N}"[..20];
+
+        var skillContent = $"""
+            ---
+            name: {skillName}
+            description: Testing reference file uploads
+            ---
+
+            # Reference Upload Test
+
+            See references/guide.md for details.
+            """;
+
+        var referenceContent = """
+            # Guide
+
+            This is a reference document with detailed examples.
+
+            ## Section One
+            First section content.
+
+            ## Section Two
+            Second section content.
+            """;
+
+        var referenceContent2 = """
+            # Patterns
+
+            Common usage patterns for this skill.
+            """;
+
+        // Upload skill with two reference files
+        using var content = new MultipartFormDataContent();
+        content.Add(new StringContent(skillName), "name");
+        content.Add(new StringContent("1.0.0"), "version");
+
+        var fileContent = new ByteArrayContent(Encoding.UTF8.GetBytes(skillContent));
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("text/markdown");
+        content.Add(fileContent, "file", "SKILL.md");
+
+        var refFileContent = new ByteArrayContent(Encoding.UTF8.GetBytes(referenceContent));
+        refFileContent.Headers.ContentType = new MediaTypeHeaderValue("text/markdown");
+        content.Add(refFileContent, "references", "guide.md");
+
+        var refFileContent2 = new ByteArrayContent(Encoding.UTF8.GetBytes(referenceContent2));
+        refFileContent2.Headers.ContentType = new MediaTypeHeaderValue("text/markdown");
+        content.Add(refFileContent2, "references", "patterns.md");
+
+        var uploadResponse = await _fixture.AuthenticatedHttpClient.PostAsync("/skills", content, ct);
+        Assert.Equal(HttpStatusCode.Created, uploadResponse.StatusCode);
+
+        // Verify the version shows file count (SKILL.md + 2 references)
+        var version = await _fixture.Client.GetVersionAsync(skillName, "1.0.0", ct);
+        Assert.NotNull(version);
+        Assert.Equal(2, version.FileCount);
+
+        // Download SKILL.md
+        var downloadedSkill = await _fixture.Client.GetSkillFileAsStringAsync(skillName, "1.0.0", ct: ct);
+        Assert.Contains("# Reference Upload Test", downloadedSkill);
+
+        // Download reference files via resource endpoint
+        var refResponse = await _fixture.HttpClient.GetAsync(
+            $"/skills/{skillName}/1.0.0/references/guide.md", ct);
+        Assert.Equal(HttpStatusCode.OK, refResponse.StatusCode);
+        var refBody = await refResponse.Content.ReadAsStringAsync(ct);
+        Assert.Contains("# Guide", refBody);
+        Assert.Contains("Section One", refBody);
+
+        var refResponse2 = await _fixture.HttpClient.GetAsync(
+            $"/skills/{skillName}/1.0.0/references/patterns.md", ct);
+        Assert.Equal(HttpStatusCode.OK, refResponse2.StatusCode);
+        var refBody2 = await refResponse2.Content.ReadAsStringAsync(ct);
+        Assert.Contains("# Patterns", refBody2);
+
+        // Verify resources appear in RFC index
+        var index = await _fixture.Client.GetRfcIndexAsync(ct);
+        Assert.NotNull(index);
+        var indexSkill = index.Skills.FirstOrDefault(s => s.Name == skillName);
+        Assert.NotNull(indexSkill);
+        var resources = indexSkill!.Resources;
+        Assert.NotNull(resources);
+        Assert.Equal(2, resources!.Count);
+        Assert.Contains(resources, r => r.Path == "references/guide.md");
+        Assert.Contains(resources, r => r.Path == "references/patterns.md");
+    }
+
+    [Fact]
+    public async Task UploadSkillWithReferences_WithoutReferences_StillWorks()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var skillName = $"noref-{Guid.NewGuid():N}"[..20];
+
+        var skillContent = $"""
+            ---
+            name: {skillName}
+            description: Testing upload without references still works
+            ---
+
+            # No References Test
+            """;
+
+        using var content = new MultipartFormDataContent();
+        content.Add(new StringContent(skillName), "name");
+        content.Add(new StringContent("1.0.0"), "version");
+
+        var fileContent = new ByteArrayContent(Encoding.UTF8.GetBytes(skillContent));
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("text/markdown");
+        content.Add(fileContent, "file", "SKILL.md");
+
+        var uploadResponse = await _fixture.AuthenticatedHttpClient.PostAsync("/skills", content, ct);
+        Assert.Equal(HttpStatusCode.Created, uploadResponse.StatusCode);
+
+        var version = await _fixture.Client.GetVersionAsync(skillName, "1.0.0", ct);
+        Assert.NotNull(version);
+        Assert.Equal(0, version.FileCount);
+    }
 }

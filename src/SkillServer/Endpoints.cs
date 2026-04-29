@@ -196,6 +196,7 @@ public static class Endpoints
         [FromForm] string name,
         [FromForm] string version,
         [FromForm] string? category,
+        HttpRequest request,
         SkillUploadService uploadService,
         IConfiguration configuration,
         CancellationToken ct)
@@ -227,9 +228,48 @@ public static class Endpoints
             });
         }
 
-        await using var stream = file.OpenReadStream();
-        var result = await uploadService.UploadSkillMdAsync(skillName.Value, skillVersion.Value, stream, category, ct);
+        var referenceFiles = request.Form.Files.GetFiles("references");
+        var hasReferences = referenceFiles.Count > 0;
 
+        if (hasReferences)
+        {
+            var resources = new List<(ResourcePath Path, Stream Content)>();
+            foreach (var refFile in referenceFiles)
+            {
+                var relativePath = $"references/{refFile.FileName}";
+                if (!ResourcePath.TryCreate(relativePath, out var resourcePath))
+                {
+                    return Results.BadRequest(new ErrorResponse
+                    {
+                        Error = "invalid_resource_path",
+                        Message = $"Invalid resource path: '{relativePath}'. Must be in references/, scripts/, or assets/ directories."
+                    });
+                }
+
+                resources.Add((resourcePath.Value, refFile.OpenReadStream()));
+            }
+
+            await using var stream = file.OpenReadStream();
+            var result = await uploadService.UploadSkillWithResourcesAsync(
+                skillName.Value, skillVersion.Value, stream, resources, category, ct);
+
+            foreach (var (_, content) in resources)
+                await content.DisposeAsync();
+
+            return HandleUploadResult(result, configuration);
+        }
+        else
+        {
+            await using var stream = file.OpenReadStream();
+            var result = await uploadService.UploadSkillMdAsync(
+                skillName.Value, skillVersion.Value, stream, category, ct);
+
+            return HandleUploadResult(result, configuration);
+        }
+    }
+
+    private static IResult HandleUploadResult(SkillUploadResult result, IConfiguration configuration)
+    {
         if (!result.Success)
         {
             if (result.IsDuplicateVersion)
