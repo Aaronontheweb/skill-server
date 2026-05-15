@@ -1,3 +1,11 @@
+#### 0.3.1 May 15th 2026 ####
+
+**New Features**
+- Add `lint` command to CLI — validates local skills against the AgentSkills.io spec without requiring a server connection (#68)
+
+**Bug Fixes**
+- Fix unbound variable error in `install-skillserver.sh` — resolves installation failures on strict Bash environments (#60)
+
 #### 0.3.0 May 5th 2026 ####
 
 **New Features**
