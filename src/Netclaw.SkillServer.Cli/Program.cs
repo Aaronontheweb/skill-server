@@ -39,6 +39,10 @@ if (parsedArgs.Command == "")
 if (parsedArgs.Command == "config")
     return await ConfigCommand.ExecuteAsync(parsedArgs);
 
+// lint operates entirely on local files — no server URL or auth needed
+if (parsedArgs.Command == "lint")
+    return await LintCommand.ExecuteAsync(parsedArgs);
+
 // --help on subcommands works without auth
 if (parsedArgs.Help)
 {
@@ -49,7 +53,7 @@ if (parsedArgs.Help)
 var resolver = new ConfigResolver();
 var config = resolver.Resolve(parsedArgs.ServerUrl, parsedArgs.ApiKey);
 
-var requiresAuth = parsedArgs.Command is not "list" and not "versions" and not "verify" and not "lint";
+var requiresAuth = parsedArgs.Command is not "list" and not "versions" and not "verify";
 
 if (!config.HasServerUrl)
 {
@@ -78,7 +82,6 @@ static async Task<int> DispatchAsync(ParsedArgs parsedArgs, SkillServerClient cl
         "list" => await ListCommand.ExecuteAsync(parsedArgs, client),
         "versions" => await VersionsCommand.ExecuteAsync(parsedArgs, client),
         "verify" => await VerifyCommand.ExecuteAsync(parsedArgs, client),
-        "lint" => await LintCommand.ExecuteAsync(parsedArgs),
         "api-key" => await ApiKeyCommand.ExecuteAsync(parsedArgs, client),
         _ => UnknownCommand(parsedArgs.Command)
     };
