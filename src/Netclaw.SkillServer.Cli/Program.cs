@@ -49,7 +49,7 @@ if (parsedArgs.Help)
 var resolver = new ConfigResolver();
 var config = resolver.Resolve(parsedArgs.ServerUrl, parsedArgs.ApiKey);
 
-var requiresAuth = parsedArgs.Command is not "list" and not "versions" and not "verify";
+var requiresAuth = parsedArgs.Command is not "list" and not "versions" and not "verify" and not "lint";
 
 if (!config.HasServerUrl)
 {
@@ -78,6 +78,7 @@ static async Task<int> DispatchAsync(ParsedArgs parsedArgs, SkillServerClient cl
         "list" => await ListCommand.ExecuteAsync(parsedArgs, client),
         "versions" => await VersionsCommand.ExecuteAsync(parsedArgs, client),
         "verify" => await VerifyCommand.ExecuteAsync(parsedArgs, client),
+        "lint" => await LintCommand.ExecuteAsync(parsedArgs),
         "api-key" => await ApiKeyCommand.ExecuteAsync(parsedArgs, client),
         _ => UnknownCommand(parsedArgs.Command)
     };
@@ -115,6 +116,7 @@ static void PrintHelp()
     Console.WriteLine("Commands:");
     Console.WriteLine("  publish <path>            Publish a skill directory to the server");
     Console.WriteLine("  publish-all <path>        Batch-publish all skills in a directory");
+    Console.WriteLine("  lint <path>               Validate skills against spec (no auth required)");
     Console.WriteLine("  delete <name> <version>   Delete a published skill version");
     Console.WriteLine("  list                      List skills on the server");
     Console.WriteLine("  versions <name>           List all versions of a skill");
