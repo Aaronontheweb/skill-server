@@ -39,6 +39,10 @@ if (parsedArgs.Command == "")
 if (parsedArgs.Command == "config")
     return await ConfigCommand.ExecuteAsync(parsedArgs);
 
+// lint operates entirely on local files — no server URL or auth needed
+if (parsedArgs.Command == "lint")
+    return await LintCommand.ExecuteAsync(parsedArgs);
+
 // --help on subcommands works without auth
 if (parsedArgs.Help)
 {
@@ -115,6 +119,7 @@ static void PrintHelp()
     Console.WriteLine("Commands:");
     Console.WriteLine("  publish <path>            Publish a skill directory to the server");
     Console.WriteLine("  publish-all <path>        Batch-publish all skills in a directory");
+    Console.WriteLine("  lint <path>               Validate skills against spec (no auth required)");
     Console.WriteLine("  delete <name> <version>   Delete a published skill version");
     Console.WriteLine("  list                      List skills on the server");
     Console.WriteLine("  versions <name>           List all versions of a skill");
