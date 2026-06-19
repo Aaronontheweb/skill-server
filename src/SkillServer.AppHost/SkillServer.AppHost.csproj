@@ -10,6 +10,8 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Http" />
     <PackageReference Include="YamlDotNet" />
+    <!-- Pin MessagePack to suppress GHSA-hv8m-jj95-wg3x (transitive from Aspire → StreamJsonRpc) -->
+    <PackageReference Include="MessagePack" />
     <ProjectReference Include="..\SkillServer\SkillServer.csproj" />
   </ItemGroup>
 
