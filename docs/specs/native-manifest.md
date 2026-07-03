@@ -264,6 +264,8 @@ Read access may be open for public registries. Private registries may require th
 
 Clients should send configured credentials to both manifest and artifact URLs for the same feed origin.
 
+See the [Security And Trust Model](security.md) for the full trust boundaries, digest-verification requirements, archive-extraction responsibilities, and sync-safety behavior that apply to native sync.
+
 ## Compatibility With The RFC Feed
 
 The RFC feed remains the compatibility contract for generic AgentSkills.io clients.
