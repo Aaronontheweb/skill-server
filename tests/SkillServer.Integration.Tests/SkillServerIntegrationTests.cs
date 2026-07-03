@@ -917,6 +917,7 @@ public sealed class SkillServerIntegrationTests
             # Resource Upload Test
 
             See references/guide.md for details.
+            Run tools/check for local verification.
             """;
 
         var referenceContent = """
@@ -936,6 +937,11 @@ public sealed class SkillServerIntegrationTests
             echo "setup complete"
             """;
 
+        var toolContent = """
+            #!/bin/bash
+            echo "tool check complete"
+            """;
+
         using var content = new MultipartFormDataContent();
         content.Add(new StringContent(skillName), "name");
         content.Add(new StringContent("1.0.0"), "version");
@@ -952,12 +958,22 @@ public sealed class SkillServerIntegrationTests
         scriptFileContent.Headers.ContentType = new MediaTypeHeaderValue("application/x-sh");
         content.Add(scriptFileContent, "resources", "scripts/setup.sh");
 
+        var toolFileContent = new ByteArrayContent(Encoding.UTF8.GetBytes(toolContent));
+        toolFileContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+        content.Add(toolFileContent, "resources", "tools/check");
+
+        var resourceMetadata = JsonSerializer.Serialize(new[]
+        {
+            new { path = "tools/check", unixMode = 0x1ED }
+        });
+        content.Add(new StringContent(resourceMetadata, Encoding.UTF8, "application/json"), "resourceMetadata");
+
         var uploadResponse = await _fixture.AuthenticatedHttpClient.PostAsync("/skills", content, ct);
         Assert.Equal(HttpStatusCode.Created, uploadResponse.StatusCode);
 
         var version = await _fixture.Client.GetVersionAsync(skillName, "1.0.0", ct);
         Assert.NotNull(version);
-        Assert.Equal(2, version.FileCount);
+        Assert.Equal(3, version.FileCount);
 
         var downloadedSkill = await _fixture.Client.GetSkillFileAsStringAsync(skillName, "1.0.0", ct: ct);
         Assert.Contains("# Resource Upload Test", downloadedSkill);
@@ -974,6 +990,12 @@ public sealed class SkillServerIntegrationTests
         Assert.Equal(HttpStatusCode.OK, scriptResponse.StatusCode);
         var scriptBody = await scriptResponse.Content.ReadAsStringAsync(ct);
         Assert.Contains("setup complete", scriptBody);
+
+        var toolResponse = await _fixture.HttpClient.GetAsync(
+            $"/skills/{skillName}/1.0.0/tools/check", ct);
+        Assert.Equal(HttpStatusCode.OK, toolResponse.StatusCode);
+        var toolBody = await toolResponse.Content.ReadAsStringAsync(ct);
+        Assert.Contains("tool check complete", toolBody);
 
         var index = await _fixture.Client.GetRfcIndexAsync(ct);
         Assert.NotNull(index);
@@ -1005,8 +1027,11 @@ public sealed class SkillServerIntegrationTests
         Assert.Equal([
             "SKILL.md",
             "references/guide.md",
-            "scripts/setup.sh"
+            "scripts/setup.sh",
+            "tools/check"
         ], archive.Entries.Select(e => e.FullName).ToArray());
+
+        Assert.Equal(0x1ED, GetUnixMode(archive.GetEntry("tools/check")!));
 
         using var archivedSkillReader = new StreamReader(archive.GetEntry("SKILL.md")!.Open());
         var archivedSkill = await archivedSkillReader.ReadToEndAsync(ct);
@@ -1014,9 +1039,10 @@ public sealed class SkillServerIntegrationTests
 
         var resources = indexSkill!.Resources;
         Assert.NotNull(resources);
-        Assert.Equal(2, resources!.Count);
+        Assert.Equal(3, resources!.Count);
         Assert.Contains(resources, r => r.Path == "references/guide.md");
         Assert.Contains(resources, r => r.Path == "scripts/setup.sh");
+        Assert.Contains(resources, r => r.Path == "tools/check" && r.UnixMode == 0x1ED);
     }
 
     [Fact]
@@ -1079,5 +1105,82 @@ public sealed class SkillServerIntegrationTests
 
         var uploadResponse = await _fixture.AuthenticatedHttpClient.PostAsync("/skills", content, ct);
         Assert.Equal(HttpStatusCode.BadRequest, uploadResponse.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("C:/temp/tool")]
+    [InlineData("C:\\temp\\tool")]
+    public async Task UploadSkillWithResources_WindowsDrivePath_ReturnsBadRequest(string path)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var skillName = $"drivepath-{Guid.NewGuid():N}"[..20];
+
+        using var content = CreateResourceUploadContent(skillName, path, "exploit");
+
+        var uploadResponse = await _fixture.AuthenticatedHttpClient.PostAsync("/skills", content, ct);
+        Assert.Equal(HttpStatusCode.BadRequest, uploadResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task UploadSkillWithResources_DangerousUnixMode_ReturnsBadRequest()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var skillName = $"badmode-{Guid.NewGuid():N}"[..20];
+
+        using var content = CreateResourceUploadContent(skillName, "tools/check", "#!/bin/sh\necho ok\n");
+        var resourceMetadata = JsonSerializer.Serialize(new[]
+        {
+            new { path = "tools/check", unixMode = 0xFED }
+        });
+        content.Add(new StringContent(resourceMetadata, Encoding.UTF8, "application/json"), "resourceMetadata");
+
+        var uploadResponse = await _fixture.AuthenticatedHttpClient.PostAsync("/skills", content, ct);
+        Assert.Equal(HttpStatusCode.BadRequest, uploadResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task UploadSkillWithResources_UnmatchedResourceMetadata_ReturnsBadRequest()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var skillName = $"badmetadata-{Guid.NewGuid():N}"[..20];
+
+        using var content = CreateResourceUploadContent(skillName, "tools/check", "#!/bin/sh\necho ok\n");
+        var resourceMetadata = JsonSerializer.Serialize(new[]
+        {
+            new { path = "tools/missing", unixMode = 0x1ED }
+        });
+        content.Add(new StringContent(resourceMetadata, Encoding.UTF8, "application/json"), "resourceMetadata");
+
+        var uploadResponse = await _fixture.AuthenticatedHttpClient.PostAsync("/skills", content, ct);
+        Assert.Equal(HttpStatusCode.BadRequest, uploadResponse.StatusCode);
+    }
+
+    private static int GetUnixMode(ZipArchiveEntry entry)
+        => (entry.ExternalAttributes >> 16) & 0x1FF;
+
+    private static MultipartFormDataContent CreateResourceUploadContent(string skillName, string resourcePath, string resourceContent)
+    {
+        var skillContent = $"""
+            ---
+            name: {skillName}
+            description: Testing resource validation
+            ---
+
+            # Resource Validation Test
+            """;
+
+        var content = new MultipartFormDataContent();
+        content.Add(new StringContent(skillName), "name");
+        content.Add(new StringContent("1.0.0"), "version");
+
+        var fileContent = new ByteArrayContent(Encoding.UTF8.GetBytes(skillContent));
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("text/markdown");
+        content.Add(fileContent, "file", "SKILL.md");
+
+        var resourceFile = new ByteArrayContent(Encoding.UTF8.GetBytes(resourceContent));
+        resourceFile.Headers.ContentType = new MediaTypeHeaderValue("text/plain");
+        content.Add(resourceFile, "resources", resourcePath);
+
+        return content;
     }
 }

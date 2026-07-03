@@ -4,6 +4,7 @@
 // </copyright>
 // -----------------------------------------------------------------------
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 using SkillServer.Data;
 using SkillServer.Models;
 using SkillServer.Services;
@@ -362,8 +363,12 @@ public static class Endpoints
             });
         }
 
+        if (!TryParseResourceMetadata(request.Form, out var resourceMetadata, out var metadataError))
+            return Results.BadRequest(metadataError);
+
         var resourceFiles = request.Form.Files.GetFiles("resources");
-        var resources = new List<(ResourcePath Path, Stream Content)>();
+        var resources = new List<SkillResourceUpload>();
+        var resourcePaths = new HashSet<string>(StringComparer.Ordinal);
         try
         {
             foreach (var resourceFile in resourceFiles)
@@ -377,7 +382,20 @@ public static class Endpoints
                     });
                 }
 
-                resources.Add((resourcePath.Value, resourceFile.OpenReadStream()));
+                var resourcePathValue = resourcePath.Value.Value;
+                resourcePaths.Add(resourcePathValue);
+                resourceMetadata.TryGetValue(resourcePathValue, out var unixMode);
+                resources.Add(new SkillResourceUpload(resourcePath.Value, resourceFile.OpenReadStream(), unixMode));
+            }
+
+            var unmatchedMetadataPath = resourceMetadata.Keys.FirstOrDefault(path => !resourcePaths.Contains(path));
+            if (unmatchedMetadataPath is not null)
+            {
+                return Results.BadRequest(new ErrorResponse
+                {
+                    Error = "invalid_resource_metadata",
+                    Message = $"Resource metadata path '{unmatchedMetadataPath}' does not match any uploaded resource."
+                });
             }
 
             await using var stream = file.OpenReadStream();
@@ -388,9 +406,77 @@ public static class Endpoints
         }
         finally
         {
-            foreach (var (_, content) in resources)
-                await content.DisposeAsync();
+            foreach (var resource in resources)
+                await resource.Content.DisposeAsync();
         }
+    }
+
+    private static bool TryParseResourceMetadata(
+        IFormCollection form,
+        out Dictionary<string, int?> metadata,
+        out ErrorResponse? error)
+    {
+        metadata = new Dictionary<string, int?>(StringComparer.Ordinal);
+        error = null;
+
+        var raw = form["resourceMetadata"].FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(raw))
+            return true;
+
+        IReadOnlyList<SkillResourceUploadMetadata>? entries;
+        try
+        {
+            entries = JsonSerializer.Deserialize(
+                raw,
+                SkillServerJsonContext.Default.IReadOnlyListSkillResourceUploadMetadata);
+        }
+        catch (JsonException ex)
+        {
+            error = new ErrorResponse
+            {
+                Error = "invalid_resource_metadata",
+                Message = $"Invalid resourceMetadata JSON: {ex.Message}"
+            };
+            return false;
+        }
+
+        if (entries is null)
+            return true;
+
+        foreach (var entry in entries)
+        {
+            if (!ResourcePath.TryCreate(entry.Path, out var resourcePath))
+            {
+                error = new ErrorResponse
+                {
+                    Error = "invalid_resource_metadata",
+                    Message = $"Invalid resource metadata path: '{entry.Path}'."
+                };
+                return false;
+            }
+
+            if (entry.UnixMode is { } unixMode && !SkillArchiveBuilder.IsSafeUnixMode(unixMode))
+            {
+                error = new ErrorResponse
+                {
+                    Error = "invalid_resource_metadata",
+                    Message = $"Invalid unixMode for resource '{entry.Path}'. Must contain only standard permission bits between 0 and 511."
+                };
+                return false;
+            }
+
+            if (!metadata.TryAdd(resourcePath.Value.Value, entry.UnixMode))
+            {
+                error = new ErrorResponse
+                {
+                    Error = "invalid_resource_metadata",
+                    Message = $"Duplicate resource metadata path: '{entry.Path}'."
+                };
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static IResult HandleUploadResult(SkillUploadResult result, IConfiguration configuration)

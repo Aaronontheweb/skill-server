@@ -17,10 +17,20 @@ internal sealed record ScannedSkill(
     string SkillMdPath,
     IReadOnlyList<ScannedResource> Resources);
 
-internal readonly record struct ScannedResource(string RelativePath, string AbsolutePath);
+internal readonly record struct ScannedResource(string RelativePath, string AbsolutePath, int? UnixMode);
 
 internal static partial class SkillDirectoryScanner
 {
+    private const UnixFileMode PermissionMask = UnixFileMode.UserRead
+                                                   | UnixFileMode.UserWrite
+                                                   | UnixFileMode.UserExecute
+                                                   | UnixFileMode.GroupRead
+                                                   | UnixFileMode.GroupWrite
+                                                   | UnixFileMode.GroupExecute
+                                                   | UnixFileMode.OtherRead
+                                                   | UnixFileMode.OtherWrite
+                                                   | UnixFileMode.OtherExecute;
+
     [GeneratedRegex(@"^---\s*\n(.*?)\n---", RegexOptions.Singleline)]
     private static partial Regex FrontmatterRegex();
 
@@ -75,15 +85,48 @@ internal static partial class SkillDirectoryScanner
 
         foreach (var subDir in Directory.EnumerateDirectories(skillDirectory))
         {
-            foreach (var file in Directory.EnumerateFiles(subDir, "*", SearchOption.AllDirectories))
+            RejectReparsePoint(subDir);
+
+            foreach (var file in EnumerateResourceFiles(subDir))
             {
                 var relativePath = Path.GetRelativePath(skillDirectory, file)
                     .Replace('\\', '/');
-                resources.Add(new ScannedResource(relativePath, file));
+                resources.Add(new ScannedResource(relativePath, file, GetUnixMode(file)));
             }
         }
 
         return resources;
+    }
+
+    private static IEnumerable<string> EnumerateResourceFiles(string directory)
+    {
+        foreach (var childDirectory in Directory.EnumerateDirectories(directory))
+        {
+            RejectReparsePoint(childDirectory);
+
+            foreach (var file in EnumerateResourceFiles(childDirectory))
+                yield return file;
+        }
+
+        foreach (var file in Directory.EnumerateFiles(directory))
+        {
+            RejectReparsePoint(file);
+            yield return file;
+        }
+    }
+
+    private static void RejectReparsePoint(string path)
+    {
+        if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
+            throw new InvalidOperationException($"Skill resources cannot include symbolic links or reparse points: {path}");
+    }
+
+    private static int? GetUnixMode(string file)
+    {
+        if (OperatingSystem.IsWindows())
+            return null;
+
+        return (int)(File.GetUnixFileMode(file) & PermissionMask);
     }
 
     internal static Dictionary<string, string>? ParseFrontmatter(string content)
