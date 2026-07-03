@@ -115,21 +115,27 @@ The native manifest must reuse this object instead of inventing another skill in
 
 ## Resource Distribution
 
-Target behavior:
+SkillServer projects skills into two artifact shapes:
 
-- Skills with only `SKILL.md` should publish as `type: "skill-md"`.
-- Skills with supporting files should publish as `type: "archive"`.
-- SkillServer standardizes archive artifacts on `.zip` at `/skills/{name}/{version}/archive.zip`.
-- Archive artifacts should contain `SKILL.md` at the archive root plus supporting files under their relative paths.
-- The RFC feed and native manifest should point to the same artifact URL and digest for a given skill version.
-- Archive artifact digest and size metadata must be additive. Existing `SKILL.md` digest behavior must remain available for compatibility with current skill download and verification APIs.
+- Skills with only `SKILL.md` publish as `type: "skill-md"`.
+- Skills with supporting files publish as `type: "archive"`.
+- Archive artifacts are standardized on `.zip` and served at `/skills/{name}/{version}/archive.zip`.
+- Archive artifacts contain `SKILL.md` at the archive root plus supporting files under their relative paths.
+- Archives are deterministic: entries are ordered, timestamps are fixed, and Unix permission bits are preserved (masked to standard permission bits) so an executable resource stays executable after extraction.
+- The RFC feed and native manifest point to the same artifact URL and digest for a given skill version.
+- Archive artifact digest and size metadata are additive. The original `SKILL.md` digest remains available for compatibility with existing skill download and verification APIs.
+- Per-file resource routes at `/skills/{name}/{version}/{path}` remain available for compatibility.
 
-Current implementation gap:
+### Migration For Existing Resourceful Skills
 
-- SkillServer currently stores resource files individually and exposes them through a `resources` extension in the RFC-shaped index.
-- SkillServer has an `archive` type constant but does not currently build or serve skill archives.
+Skills published before archive support existed were stored as individual resource files with only a `skill-md` artifact. SkillServer backfills these automatically; no manual re-publish is required.
 
-The migration path is to add archive artifact support while preserving existing per-file resource routes for compatibility.
+- On startup, a one-time backfill scans versioned skills that have resources but no archive artifact.
+- For each, it builds the deterministic archive from the stored `SKILL.md` and resource blobs, stores it as a content-addressed blob, and records the additive `archive` artifact metadata.
+- The original `SKILL.md` bytes, digest, and per-file resource routes are preserved, so existing RFC feed consumers and `skill-md` download/verification callers are unaffected.
+- Backfill is additive and idempotent: a version that already has an archive artifact is skipped, and a failed backfill leaves the existing `skill-md` artifact and per-file routes intact.
+
+Clients that only understand `skill-md` continue to work; clients that understand archives pick up the archive artifact on their next sync.
 
 ## Validation Requirements
 

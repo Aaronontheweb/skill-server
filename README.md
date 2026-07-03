@@ -34,6 +34,7 @@ SkillServer implements Agent Skills standards and defines native extensions for 
 | [Skill Packages](docs/specs/skills.md) | How to author and publish AgentSkills.io-compatible SkillServer skills. |
 | [Sub-Agent Packages](docs/specs/subagents.md) | How NetClaw sub-agent definitions are authored and how SkillServer will publish them. |
 | [Native Manifest](docs/specs/native-manifest.md) | Planned non-RFC sync feed for skills, sub-agents, and future native resources. |
+| [Security And Trust Model](docs/specs/security.md) | Trust boundaries, authentication, digest verification, and sync safety for native sync. |
 | [Sub-Agent Sync Epic](docs/epics/subagent-sync.md) | Requirements and proposed GitHub issue breakdown for native manifest and sub-agent sync. |
 
 ## Quick Start
