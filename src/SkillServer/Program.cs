@@ -32,6 +32,7 @@ builder.Services.AddSingleton<SkillUploadService>();
 builder.Services.AddSingleton<SubAgentUploadService>();
 builder.Services.AddSingleton<SkillArchiveBackfillService>();
 builder.Services.AddSingleton<ApiKeyService>();
+builder.Services.AddSingleton<SeedDataService>();
 
 var app = builder.Build();
 
@@ -41,6 +42,10 @@ await dbInitializer.InitializeAsync();
 
 var archiveBackfillService = app.Services.GetRequiredService<SkillArchiveBackfillService>();
 await archiveBackfillService.BackfillAsync();
+
+// Seed skills and sub-agents from files
+var seedService = app.Services.GetRequiredService<SeedDataService>();
+await seedService.SeedAsync();
 
 // Seed API key from environment variable
 var apiKeyService = app.Services.GetRequiredService<ApiKeyService>();

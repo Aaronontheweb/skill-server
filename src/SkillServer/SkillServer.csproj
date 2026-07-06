@@ -45,6 +45,12 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Update="seed\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
   <!-- .NET SDK 10+ includes wwwroot implicitly as Content with CopyToPublishDirectory=PreserveNewest -->
 
 </Project>
