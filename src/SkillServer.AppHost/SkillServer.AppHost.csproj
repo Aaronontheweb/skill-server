@@ -15,4 +15,11 @@
     <ProjectReference Include="..\SkillServer\SkillServer.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="..\..\src\SkillServer\seed\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <LinkBase>seed\</LinkBase>
+    </Content>
+  </ItemGroup>
+
 </Project>
