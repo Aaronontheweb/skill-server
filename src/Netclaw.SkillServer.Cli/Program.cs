@@ -78,7 +78,6 @@ static async Task<int> DispatchAsync(ParsedArgs parsedArgs, SkillServerClient cl
     {
         "publish" => await PublishCommand.ExecuteAsync(parsedArgs, client),
         "publish-subagent" => await PublishSubAgentCommand.ExecuteAsync(parsedArgs, client),
-        "publish-subagents" => await PublishSubAgentsCommand.ExecuteAsync(parsedArgs, client),
         "download-subagent" => await DownloadSubAgentCommand.ExecuteAsync(parsedArgs, client),
         "publish-all" => await PublishAllCommand.ExecuteAsync(parsedArgs, client),
         "delete" => await DeleteCommand.ExecuteAsync(parsedArgs, client),
@@ -122,7 +121,6 @@ static void PrintHelp()
     Console.WriteLine("Commands:");
     Console.WriteLine("  publish <path>            Publish a skill directory to the server");
     Console.WriteLine("  publish-subagent <path>   Publish a sub-agent markdown file to the server");
-    Console.WriteLine("  publish-subagents <path>  Batch-publish sub-agent markdown files");
     Console.WriteLine("  download-subagent <n> <v> <path> Download a verified sub-agent artifact");
     Console.WriteLine("  publish-all <path>        Batch-publish all skills in a directory");
     Console.WriteLine("  lint <path>               Validate skills or sub-agents (no auth required)");

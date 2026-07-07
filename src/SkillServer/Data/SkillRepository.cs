@@ -365,6 +365,7 @@ public sealed class SkillRepository
             ORDER BY
                 CASE WHEN s.name = @query THEN 0
                      WHEN s.name LIKE @query || '%' THEN 1
+                     WHEN skills_fts MATCH 'name:' || @ftsQuery THEN 2
                      ELSE 3 END,
                 rank
             """;
