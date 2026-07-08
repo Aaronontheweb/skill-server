@@ -20,18 +20,17 @@
   </PropertyGroup>
   <!-- Version Management -->
   <PropertyGroup>
-    <VersionPrefix>0.4.0-beta.4</VersionPrefix>
+    <VersionPrefix>0.4.0-beta.5</VersionPrefix>
     <VersionSuffix>beta.3</VersionSuffix>
     <PackageReleaseNotes>**New Features**
-- Add batch sub-agent publishing with a new `publish-subagents` CLI command to validate and upload all sub-agent definitions under a folder, with support for version overrides, dry-run, force publish, and verbose output (#121)
-- Add `lint subagents` CLI mode to validate every sub-agent markdown file in a directory and report duplicate sub-agent names
+- Add gallery resource browser — expose skill resource metadata and render a read-only file browser in the gallery for SKILL.md and resource files
+- Add runtime gallery version display — expose SkillServer assembly metadata through `/api/v1/info` and render gallery footer versions from runtime app metadata
 
-**Improvements**
-- Improve skill search relevance by prioritizing exact and prefix skill-name matches ahead of description-only matches (#121)
-- Improve gallery UX by making cards interactive, wiring version history rows to version URLs, and adding a keyboard hint to the search input
+**Bug Fixes**
+- Fix `?q=` query param not being read on skills listing page — navigating from homepage search to `/skills/?q=foo` now pre-fills the search box, shows filtered results, and updates the heading to 'Search Results' (#124)
 
 **Internal**
-- Extend sub-agent validation and publishing flow to accept `version` frontmatter (including `metadata.version`) and add validation tests for batch publish and route parsing logic (#121)</PackageReleaseNotes>
+- Remove duplicate `release_notes.md` (lowercase variant) to prevent checkout conflicts on case-insensitive filesystems (Windows)</PackageReleaseNotes>
   </PropertyGroup>
   <!-- Default: non-packable unless explicitly set -->
   <PropertyGroup>
