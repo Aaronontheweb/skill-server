@@ -1,3 +1,15 @@
+#### 0.4.0-beta.5 July 8th 2026 ####
+
+**New Features**
+- Add gallery resource browser — expose skill resource metadata and render a read-only file browser in the gallery for SKILL.md and resource files
+- Add runtime gallery version display — expose SkillServer assembly metadata through `/api/v1/info` and render gallery footer versions from runtime app metadata
+
+**Bug Fixes**
+- Fix `?q=` query param not being read on skills listing page — navigating from homepage search to `/skills/?q=foo` now pre-fills the search box, shows filtered results, and updates the heading to 'Search Results' (#124)
+
+**Internal**
+- Remove duplicate `release_notes.md` (lowercase variant) to prevent checkout conflicts on case-insensitive filesystems (Windows)
+
 #### 0.4.0-beta.4 July 7th 2026 ####
 
 **New Features**
