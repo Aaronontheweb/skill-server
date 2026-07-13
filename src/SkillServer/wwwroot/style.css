@@ -146,6 +146,11 @@ a:hover{color:var(--teal-dark)}
 .code-block .string{color:var(--teal)}
 .code-block .title{color:var(--text)}
 
+/* ── CODE BLOCK WRAP (for standalone code blocks with toolbar) ── */
+.code-block-wrap{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.code-block-wrap .code-block{border:0;border-radius:0}
+.code-block-toolbar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border)}
+
 /* ── FILE BROWSER ── */
 .file-browser{display:grid;grid-template-columns:minmax(240px,320px) minmax(0,1fr);gap:16px;align-items:start}
 .file-tree{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:8px;max-height:620px;overflow:auto}

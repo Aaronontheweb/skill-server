@@ -1,5 +1,9 @@
-function copyToClipboard(btn, elementId) {
-  var text = document.getElementById(elementId).textContent;
+function copyToClipboard(btn) {
+  var header = btn.closest('.file-preview-header');
+  var wrap = btn.closest('.code-block-wrap');
+  var codeBlock = header ? header.nextElementSibling : wrap ? wrap.querySelector('.code-block') : null;
+  if (!codeBlock) return;
+  var text = codeBlock.textContent;
   navigator.clipboard.writeText(text).then(function() {
     var orig = btn.innerHTML;
     btn.classList.add('copied');
